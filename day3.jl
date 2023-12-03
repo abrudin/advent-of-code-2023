@@ -16,10 +16,6 @@ struct Parts
     parts
 end
 
-flatten(x) = reduce(vcat, x)
-mapper(fn) = x -> map(fn, x)
-get_partnumber(part) = parse(Int64, part.num)
-
 function build_parts((; partial, parts), (; row, col, char))
     replace_last(elem) = vcat(collect(Iterators.take(parts, length(parts) - 1)), elem)
     append_partnumber(part, char) = Part(part.row, part.col, part.num * char)
@@ -43,9 +39,9 @@ neighbor_coords((; row, col, num), dims) =
 
 neighbor_coords(row, col, dims) = neighbor_coords(Part(row, col, " "), dims)
 
-function has_symbol_adjacent(part, arr, dims)
-    is_symbol((r, c)) = !isdigit(arr[r][c].char) && arr[r][c].char != '.'
-    any(is_symbol, neighbor_coords(part, dims))
+function has_symbol_adjacent(points, dims)
+    is_symbol((r, c)) = !isdigit(points[r][c].char) && points[r][c].char != '.'
+    part -> any(is_symbol, neighbor_coords(part, dims))
 end
 
 part_number_coords((; row, col, num)) = [(row, c) for c = col:col+length(num)-1]
@@ -53,19 +49,23 @@ part_number_coords((; row, col, num)) = [(row, c) for c = col:col+length(num)-1]
 part_near_gear((row, col), dims) = part ->
     !isempty(findall(in(neighbor_coords(row, col, dims)), part_number_coords(part)))
 
+flatten(x) = reduce(vcat, x)
+mapper(fn) = x -> map(fn, x)
+has_exactly_two(x) = length(x) == 2
+get_partnumber(part) = parse(Int64, part.num)
+
 open("day3.txt", "r") do f
     lines = readlines(f)
     dims = (length(lines), length(lines[1]))
-    chars_with_coords = map(((row, line),) ->
-            map(((col, char),) ->
-                    Point((row, col, char)), zip(1:length(line), line)), zip(1:length(lines), lines))
 
-    potential_parts = flatten(get_parts.(chars_with_coords))
-    real_parts = filter(part -> has_symbol_adjacent(part, chars_with_coords, dims), potential_parts)
+    points = eachrow(Point.([(row, col, lines[row][col]) for row in 1:dims[1], col in 1:dims[2]]))
+
+    potential_parts = flatten(get_parts.(points))
+    real_parts = filter(has_symbol_adjacent(points, dims), potential_parts)
     a = sum(get_partnumber.(real_parts))
 
-    potential_gears = map(p -> (p.row, p.col), filter(c -> c.char == '*', flatten(chars_with_coords)))
-    gear_parts = filter(parts -> length(parts) == 2, map(gear -> filter(part_near_gear(gear, dims), potential_parts), potential_gears))
+    potential_gears = map(p -> (p.row, p.col), filter(c -> c.char == '*', flatten(points)))
+    gear_parts = filter(has_exactly_two, map(gear -> filter(part_near_gear(gear, dims), potential_parts), potential_gears))
     gear_ratios = map(prod ∘ mapper(get_partnumber), gear_parts)
     b = sum(gear_ratios)
 

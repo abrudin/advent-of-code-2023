@@ -56,15 +56,17 @@ part_near_gear((row, col), dims) = part ->
 open("day3.txt", "r") do f
     lines = readlines(f)
     dims = (length(lines), length(lines[1]))
-    chars_with_coords = map(((row, line),) -> map(((col, char),) -> Point((row, col, char)), zip(1:length(line), line)), zip(1:length(lines), lines))
+    chars_with_coords = map(((row, line),) ->
+            map(((col, char),) ->
+                    Point((row, col, char)), zip(1:length(line), line)), zip(1:length(lines), lines))
 
     potential_parts = flatten(get_parts.(chars_with_coords))
     real_parts = filter(part -> has_symbol_adjacent(part, chars_with_coords, dims), potential_parts)
     a = sum(get_partnumber.(real_parts))
 
     potential_gears = map(p -> (p.row, p.col), filter(c -> c.char == '*', flatten(chars_with_coords)))
-    real_gears = filter(x -> length(x) == 2, map(gear -> filter(part_near_gear(gear, dims), potential_parts), potential_gears))
-    gear_ratios = map(prod ∘ mapper(get_partnumber), real_gears)
+    gear_parts = filter(parts -> length(parts) == 2, map(gear -> filter(part_near_gear(gear, dims), potential_parts), potential_gears))
+    gear_ratios = map(prod ∘ mapper(get_partnumber), gear_parts)
     b = sum(gear_ratios)
 
     println((a, b))
